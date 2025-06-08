@@ -3,5 +3,4 @@ numpy
 scipy
 matplotlib
 fpdf
-rdkit-pypi==2022.9.5
 mordred
