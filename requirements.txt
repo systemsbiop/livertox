@@ -3,3 +3,5 @@ numpy
 scipy
 matplotlib
 fpdf
+mordred==1.2.0
+pandas
