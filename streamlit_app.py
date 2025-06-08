@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 import tempfile
 import os
-from mordred import Calculator, descriptors
-from rdkit import Chem
 
 st.set_page_config(page_title="Enhanced Digital Liver DILI Simulator", layout="wide")
 st.title("🧬 Enhanced Digital Liver: Drug-Induced Liver Injury (DILI) Simulator")
@@ -59,22 +57,10 @@ if st.sidebar.button("Run Simulation for All Drugs"):
     st.success(f"✅ Running simulation for {len(smiles_list)} compounds")
 
     for idx, smiles in enumerate(smiles_list):
-        mol = Chem.MolFromSmiles(smiles)
-        if not mol:
-            st.error(f"❌ Invalid SMILES: {smiles}")
-            continue
-
-        calc = Calculator(descriptors.TPSA, descriptors.MolWt, descriptors.LogP)
-        result = calc(mol)
-        try:
-            mw = result["MolWt"]
-            logp = result["LogP"]
-            tpsa = result["TPSA"]
-        except:
-            st.warning(f"⚠️ Could not compute descriptors for {smiles}")
-            continue
-
-        amp = 2.5 if any(x in smiles.lower() for x in ["cl", "br", "no2", "n=o", "n#n"]) else 1.0
+        st.subheader(f"🧪 Compound {idx+1}: `{smiles}`")
+        st.write("⚠️ Molecular descriptor calculations require rdkit and mordred, which are not available here.")
+        
+        amp = 1.0  # Default value since we cannot analyze structure
 
         y0 = [dose, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         t = np.linspace(0, duration, 300)
@@ -82,9 +68,6 @@ if st.sidebar.button("Run Simulation for All Drugs"):
 
         labels = ["Drug", "Metabolite", "GSH", "ROS", "ALT", "AST", "DNA Damage",
                   "Apoptosis", "Necrosis", "Cholestasis", "Fibrosis"]
-
-        st.subheader(f"🧪 Compound {idx+1}: `{smiles}`")
-        st.write(f"**MolWt**: {mw:.2f} | **LogP**: {logp:.2f} | **TPSA**: {tpsa:.2f} | **Amp:** {amp}")
 
         fig, ax = plt.subplots(figsize=(10, 4))
         for i in range(len(labels)):
@@ -112,7 +95,6 @@ if st.sidebar.button("Run Simulation for All Drugs"):
             pdf.cell(0, 10, "Digital Liver DILI Simulation Report", ln=1)
             pdf.set_font("Arial", "", 12)
             pdf.cell(0, 10, f"SMILES: {smiles}", ln=1)
-            pdf.cell(0, 10, f"MolWt: {mw:.2f} | LogP: {logp:.2f} | TPSA: {tpsa:.2f}", ln=1)
             pdf.cell(0, 10, f"Dose: {dose} | Duration: {duration}h", ln=1)
             pdf.cell(0, 10, f"Toxicity Amplifier: {amp}", ln=1)
             pdf.cell(0, 10, f"Final Score: {score:.2f} | Risk Level: {risk}", ln=1)
