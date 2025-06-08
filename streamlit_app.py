@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from fpdf import FPDF
 import tempfile
 import os
+from mordred import Calculator, descriptors
+from rdkit import Chem
 
 st.set_page_config(page_title="Enhanced Digital Liver DILI Simulator", layout="wide")
 st.title("🧬 Enhanced Digital Liver: Drug-Induced Liver Injury (DILI) Simulator")
@@ -57,10 +59,22 @@ if st.sidebar.button("Run Simulation for All Drugs"):
     st.success(f"✅ Running simulation for {len(smiles_list)} compounds")
 
     for idx, smiles in enumerate(smiles_list):
-        st.subheader(f"🧪 Compound {idx+1}: `{smiles}`")
-        st.write("⚠️ Molecular descriptor calculations require rdkit and mordred, which are not available here.")
-        
-        amp = 1.0  # Default value since we cannot analyze structure
+        mol = Chem.MolFromSmiles(smiles)
+        if not mol:
+            st.error(f"❌ Invalid SMILES: {smiles}")
+            continue
+
+        calc = Calculator(descriptors.TPSA, descriptors.MolWt, descriptors.LogP)
+        result = calc(mol)
+        try:
+            mw = result["MolWt"]
+            logp = result["LogP"]
+            tpsa = result["TPSA"]
+        except:
+            st.warning(f"⚠️ Could not compute descriptors for {smiles}")
+            continue
+
+        amp = 2.5 if any(x in smiles.lower() for x in ["cl", "br", "no2", "n=o", "n#n"]) else 1.0
 
         y0 = [dose, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         t = np.linspace(0, duration, 300)
@@ -68,6 +82,9 @@ if st.sidebar.button("Run Simulation for All Drugs"):
 
         labels = ["Drug", "Metabolite", "GSH", "ROS", "ALT", "AST", "DNA Damage",
                   "Apoptosis", "Necrosis", "Cholestasis", "Fibrosis"]
+
+        st.subheader(f"🧪 Compound {idx+1}: `{smiles}`")
+        st.write(f"**MolWt**: {mw:.2f} | **LogP**: {logp:.2f} | **TPSA**: {tpsa:.2f} | **Amp:** {amp}")
 
         fig, ax = plt.subplots(figsize=(10, 4))
         for i in range(len(labels)):
@@ -85,7 +102,20 @@ if st.sidebar.button("Run Simulation for All Drugs"):
         elif score > 0.75:
             risk = "MODERATE"
 
+        # New Feature: Identify dominant toxicity driver
+        biomarker_contributions = {
+            "ROS": 0.2 * sol[-1][3],
+            "DNA Damage": 0.15 * sol[-1][6],
+            "Apoptosis": 0.15 * sol[-1][7],
+            "Necrosis": 0.15 * sol[-1][8],
+            "Cholestasis": 0.15 * sol[-1][9],
+            "Fibrosis": 0.2 * sol[-1][10]
+        }
+        dominant_biomarker = max(biomarker_contributions, key=biomarker_contributions.get)
+        dominant_value = biomarker_contributions[dominant_biomarker]
+
         st.markdown(f"### 🧬 DILI Score: `{score:.2f}` → **Risk Level: `{risk}`**")
+        st.markdown(f"**🔬 Dominant Toxicity Pathway:** `{dominant_biomarker}` with contribution `{dominant_value:.2f}`")
 
         # PDF Report
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
@@ -95,9 +125,11 @@ if st.sidebar.button("Run Simulation for All Drugs"):
             pdf.cell(0, 10, "Digital Liver DILI Simulation Report", ln=1)
             pdf.set_font("Arial", "", 12)
             pdf.cell(0, 10, f"SMILES: {smiles}", ln=1)
+            pdf.cell(0, 10, f"MolWt: {mw:.2f} | LogP: {logp:.2f} | TPSA: {tpsa:.2f}", ln=1)
             pdf.cell(0, 10, f"Dose: {dose} | Duration: {duration}h", ln=1)
             pdf.cell(0, 10, f"Toxicity Amplifier: {amp}", ln=1)
-            pdf.cell(0, 10, f"Final Score: {score:.2f} | Risk Level: {risk}", ln=1)
+            pdf.cell(0, 10, f"DILI Score: {score:.2f} | Risk: {risk}", ln=1)
+            pdf.cell(0, 10, f"Dominant Pathway: {dominant_biomarker} ({dominant_value:.2f})", ln=1)
             pdf.output(tmp.name)
 
             with open(tmp.name, "rb") as file:
