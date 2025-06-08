@@ -1,0 +1,3 @@
+# packages.txt
+libboost-all-dev
+rdkit
