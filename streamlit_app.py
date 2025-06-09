@@ -34,7 +34,7 @@ def liver_dili_model(y, t, amp, dose, is_antioxidant=False):
     k_chol = 0.006 * amp
     k_fib = 0.005 * amp
 
-    antioxidant_clearance = 0.015 if is_antioxidant else 0.0
+    antioxidant_clearance = 0.001 if is_antioxidant else 0.0
 
     d_drug = -k_cyp * drug
     d_tox_met = k_cyp * drug * k_bio - k_gsh * min(tox_met, gsh)
