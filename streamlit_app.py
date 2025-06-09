@@ -1,4 +1,3 @@
-
 import streamlit as st
 import numpy as np
 from scipy.integrate import odeint
@@ -10,7 +9,7 @@ import os
 st.set_page_config(page_title="Digital Liver v2 – Bioactivated DILI Simulator", layout="wide")
 st.title("🧬 Digital Liver v2: CYP450-Driven Drug-Induced Liver Injury Simulation")
 
-st.markdown(\"\"\"
+st.markdown("""
 This enhanced model simulates:
 - **CYP450 bioactivation**
 - **Mitochondrial dysfunction**
@@ -18,8 +17,9 @@ This enhanced model simulates:
 - **ALT/AST elevation**
 - **Apoptosis, Necrosis, Fibrosis**
 - **Idiosyncratic DILI risk**
-\"\"\")
+""")
 
+# Liver ODE Model
 def liver_dili_model(y, t, amp, dose, idio=0):
     drug, tox_met, gsh, ros, alt, ast, mito, chol, apop, necro, fib = y
     k_cyp = 0.04
@@ -48,7 +48,8 @@ def liver_dili_model(y, t, amp, dose, idio=0):
 
     return [d_drug, d_tox_met, d_gsh, d_ros, d_alt, d_ast, d_mito, d_chol, d_apop, d_necro, d_fib]
 
-def interpret_toxicity(marker, value):
+# Toxicity interpretation
+def interpret_toxicity(marker):
     explanations = {
         "ROS": "High oxidative stress was observed, which can trigger widespread cellular damage.",
         "ALT": "Elevated ALT suggests liver cell leakage or membrane injury.",
@@ -60,12 +61,14 @@ def interpret_toxicity(marker, value):
     }
     return explanations.get(marker, "Toxic pathway contribution was observed.")
 
+# Sidebar input
 st.sidebar.header("Drug Input")
 smiles_list = st.sidebar.text_area("Enter SMILES (one per line)", "CC(=O)NC1=CC=C(C=C1)O").splitlines()
 dose = st.sidebar.slider("Dose Level", 0.1, 3.0, 1.0, 0.1)
 duration = st.sidebar.slider("Simulation Time (h)", 12, 96, 48)
 idiosync_on = st.sidebar.checkbox("Include Idiosyncratic Risk", value=True)
 
+# Main simulation block
 if st.sidebar.button("Run Simulation"):
     for idx, smiles in enumerate(smiles_list):
         amp = 2.5 if any(x in smiles.lower() for x in ["cl", "br", "no2", "epoxide"]) else 1.0
@@ -99,7 +102,7 @@ if st.sidebar.button("Run Simulation"):
             "Fibrosis": final[10]
         }
         dominant = max(tox_markers, key=tox_markers.get)
-        explanation = interpret_toxicity(dominant, tox_markers[dominant])
+        explanation = interpret_toxicity(dominant)
 
         score = (
             0.18 * final[3] + 0.14 * final[4] + 0.12 * final[6] +
@@ -111,6 +114,7 @@ if st.sidebar.button("Run Simulation"):
         st.markdown(f"**🔬 Dominant Toxicity Pathway:** `{dominant}`")
         st.info(f"🧠 {explanation}")
 
+        # PDF Report
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             pdf = FPDF()
             pdf.add_page()
@@ -127,11 +131,3 @@ if st.sidebar.button("Run Simulation"):
             with open(tmp.name, "rb") as file:
                 st.download_button("📄 Download PDF Report", data=file, file_name=f"dili_report_{idx+1}.pdf", mime="application/pdf")
             os.unlink(tmp.name)
-"""
-
-# Save as .py
-explain_code_path = "/mnt/data/digital_liver_v2_with_explanations.py"
-with open(explain_code_path, "w") as f:
-    f.write(explanation_code)
-
-explain_code_path
