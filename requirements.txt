@@ -1,15 +1,5 @@
-# Create updated requirements.txt for Digital Liver v2 app
-
-requirements_v2 = """
 streamlit
 numpy
 scipy
 matplotlib
 fpdf
-"""
-
-req_v2_path = "/mnt/data/requirements.txt"
-with open(req_v2_path, "w") as f:
-    f.write(requirements_v2)
-
-req_v2_path
