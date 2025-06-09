@@ -1,6 +1,4 @@
-# Add explanatory toxicity interpretation logic to the Streamlit liver simulator app and generate downloadable code
 
-explanation_code = """
 import streamlit as st
 import numpy as np
 from scipy.integrate import odeint
