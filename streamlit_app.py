@@ -11,13 +11,17 @@ st.title("🧬 Digital Liver v2: CYP450-Driven Drug-Induced Liver Injury Simulat
 
 st.markdown("""
 This enhanced model simulates:
-- **CYP450 bioactivation**
-- **Mitochondrial dysfunction**
-- **ROS, GSH depletion**
-- **ALT/AST elevation**
-- **Apoptosis, Necrosis, Fibrosis**
-- **Idiosyncratic DILI risk**
+- CYP450 bioactivation
+- Mitochondrial dysfunction
+- ROS and GSH depletion
+- ALT/AST elevation
+- Apoptosis, Necrosis, Fibrosis
+- Idiosyncratic DILI risk
 """)
+
+# Safe ASCII fallback for PDF output
+def safe_text(text):
+    return text.encode('latin-1', 'replace').decode('latin-1')
 
 # Liver ODE Model
 def liver_dili_model(y, t, amp, dose, idio=0):
@@ -32,7 +36,7 @@ def liver_dili_model(y, t, amp, dose, idio=0):
     k_necro = 0.008 * amp
     k_chol = 0.006 * amp
     k_fib = 0.005 * amp
-    idiosync = 1 + np.sin(t/5) * idio
+    idiosync = 1 + np.sin(t / 5) * idio
 
     d_drug = -k_cyp * drug
     d_tox_met = k_cyp * drug * k_bio - k_gsh * min(tox_met, gsh)
@@ -48,7 +52,6 @@ def liver_dili_model(y, t, amp, dose, idio=0):
 
     return [d_drug, d_tox_met, d_gsh, d_ros, d_alt, d_ast, d_mito, d_chol, d_apop, d_necro, d_fib]
 
-# Toxicity interpretation
 def interpret_toxicity(marker):
     explanations = {
         "ROS": "High oxidative stress was observed, which can trigger widespread cellular damage.",
@@ -68,7 +71,6 @@ dose = st.sidebar.slider("Dose Level", 0.1, 3.0, 1.0, 0.1)
 duration = st.sidebar.slider("Simulation Time (h)", 12, 96, 48)
 idiosync_on = st.sidebar.checkbox("Include Idiosyncratic Risk", value=True)
 
-# Main simulation block
 if st.sidebar.button("Run Simulation"):
     for idx, smiles in enumerate(smiles_list):
         amp = 2.5 if any(x in smiles.lower() for x in ["cl", "br", "no2", "epoxide"]) else 1.0
@@ -119,13 +121,13 @@ if st.sidebar.button("Run Simulation"):
             pdf = FPDF()
             pdf.add_page()
             pdf.set_font("Arial", "B", 14)
-            pdf.cell(0, 10, "Digital Liver v2: DILI Simulation Report", ln=1)
+            pdf.cell(0, 10, safe_text("Digital Liver v2: DILI Simulation Report"), ln=1)
             pdf.set_font("Arial", "", 12)
-            pdf.cell(0, 10, f"SMILES: {smiles}", ln=1)
-            pdf.cell(0, 10, f"Dose: {dose} | Time: {duration}h", ln=1)
-            pdf.cell(0, 10, f"Toxicity Amplifier: {amp}", ln=1)
-            pdf.cell(0, 10, f"DILI Score: {score:.2f} | Risk: {risk}", ln=1)
-            pdf.multi_cell(0, 10, f"Main Toxicity: {dominant} → {explanation}")
+            pdf.cell(0, 10, safe_text(f"SMILES: {smiles}"), ln=1)
+            pdf.cell(0, 10, safe_text(f"Dose: {dose} | Time: {duration}h"), ln=1)
+            pdf.cell(0, 10, safe_text(f"Toxicity Amplifier: {amp}"), ln=1)
+            pdf.cell(0, 10, safe_text(f"DILI Score: {score:.2f} | Risk: {risk}"), ln=1)
+            pdf.multi_cell(0, 10, safe_text(f"Main Toxicity: {dominant} → {explanation}"))
             pdf.output(tmp.name)
 
             with open(tmp.name, "rb") as file:
