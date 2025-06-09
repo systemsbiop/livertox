@@ -1,3 +1,6 @@
+# Add explanatory toxicity interpretation logic to the Streamlit liver simulator app and generate downloadable code
+
+explanation_code = """
 import streamlit as st
 import numpy as np
 from scipy.integrate import odeint
@@ -9,7 +12,7 @@ import os
 st.set_page_config(page_title="Digital Liver v2 – Bioactivated DILI Simulator", layout="wide")
 st.title("🧬 Digital Liver v2: CYP450-Driven Drug-Induced Liver Injury Simulation")
 
-st.markdown("""
+st.markdown(\"\"\"
 This enhanced model simulates:
 - **CYP450 bioactivation**
 - **Mitochondrial dysfunction**
@@ -17,9 +20,8 @@ This enhanced model simulates:
 - **ALT/AST elevation**
 - **Apoptosis, Necrosis, Fibrosis**
 - **Idiosyncratic DILI risk**
-""")
+\"\"\")
 
-# Liver model function
 def liver_dili_model(y, t, amp, dose, idio=0):
     drug, tox_met, gsh, ros, alt, ast, mito, chol, apop, necro, fib = y
     k_cyp = 0.04
@@ -32,7 +34,7 @@ def liver_dili_model(y, t, amp, dose, idio=0):
     k_necro = 0.008 * amp
     k_chol = 0.006 * amp
     k_fib = 0.005 * amp
-    idiosync = 1 + np.sin(t/5) * idio  # fluctuating sensitivity
+    idiosync = 1 + np.sin(t/5) * idio
 
     d_drug = -k_cyp * drug
     d_tox_met = k_cyp * drug * k_bio - k_gsh * min(tox_met, gsh)
@@ -48,14 +50,24 @@ def liver_dili_model(y, t, amp, dose, idio=0):
 
     return [d_drug, d_tox_met, d_gsh, d_ros, d_alt, d_ast, d_mito, d_chol, d_apop, d_necro, d_fib]
 
-# Sidebar Inputs
+def interpret_toxicity(marker, value):
+    explanations = {
+        "ROS": "High oxidative stress was observed, which can trigger widespread cellular damage.",
+        "ALT": "Elevated ALT suggests liver cell leakage or membrane injury.",
+        "Mito Stress": "Mitochondrial dysfunction can lead to energy depletion and trigger apoptosis.",
+        "Apoptosis": "Programmed cell death was a major outcome, often seen in early DILI.",
+        "Necrosis": "Cell death through necrosis indicates severe, uncontrolled damage.",
+        "Fibrosis": "Chronic damage may result in fibrotic tissue formation.",
+        "Cholestasis": "Bile flow disruption was prominent, which can lead to jaundice or hepatic inflammation."
+    }
+    return explanations.get(marker, "Toxic pathway contribution was observed.")
+
 st.sidebar.header("Drug Input")
 smiles_list = st.sidebar.text_area("Enter SMILES (one per line)", "CC(=O)NC1=CC=C(C=C1)O").splitlines()
 dose = st.sidebar.slider("Dose Level", 0.1, 3.0, 1.0, 0.1)
 duration = st.sidebar.slider("Simulation Time (h)", 12, 96, 48)
 idiosync_on = st.sidebar.checkbox("Include Idiosyncratic Risk", value=True)
 
-# Run simulation
 if st.sidebar.button("Run Simulation"):
     for idx, smiles in enumerate(smiles_list):
         amp = 2.5 if any(x in smiles.lower() for x in ["cl", "br", "no2", "epoxide"]) else 1.0
@@ -79,6 +91,18 @@ if st.sidebar.button("Run Simulation"):
         st.pyplot(fig)
 
         final = sol[-1]
+        tox_markers = {
+            "ROS": final[3],
+            "ALT": final[4],
+            "Mito Stress": final[6],
+            "Cholestasis": final[7],
+            "Apoptosis": final[8],
+            "Necrosis": final[9],
+            "Fibrosis": final[10]
+        }
+        dominant = max(tox_markers, key=tox_markers.get)
+        explanation = interpret_toxicity(dominant, tox_markers[dominant])
+
         score = (
             0.18 * final[3] + 0.14 * final[4] + 0.12 * final[6] +
             0.12 * final[8] + 0.12 * final[9] + 0.18 * final[10] + 0.14 * final[7]
@@ -86,8 +110,9 @@ if st.sidebar.button("Run Simulation"):
         risk = "LOW" if score < 0.6 else "MODERATE" if score < 1.5 else "HIGH"
 
         st.markdown(f"### 🧬 DILI Score: `{score:.2f}` → **Risk: {risk}`**")
+        st.markdown(f"**🔬 Dominant Toxicity Pathway:** `{dominant}`")
+        st.info(f"🧠 {explanation}")
 
-        # PDF generation
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             pdf = FPDF()
             pdf.add_page()
@@ -98,13 +123,17 @@ if st.sidebar.button("Run Simulation"):
             pdf.cell(0, 10, f"Dose: {dose} | Time: {duration}h", ln=1)
             pdf.cell(0, 10, f"Toxicity Amplifier: {amp}", ln=1)
             pdf.cell(0, 10, f"DILI Score: {score:.2f} | Risk: {risk}", ln=1)
+            pdf.multi_cell(0, 10, f"Main Toxicity: {dominant} → {explanation}")
             pdf.output(tmp.name)
 
             with open(tmp.name, "rb") as file:
-                st.download_button(
-                    "📄 Download PDF Report",
-                    data=file,
-                    file_name=f"dili_report_{idx+1}.pdf",
-                    mime="application/pdf"
-                )
+                st.download_button("📄 Download PDF Report", data=file, file_name=f"dili_report_{idx+1}.pdf", mime="application/pdf")
             os.unlink(tmp.name)
+"""
+
+# Save as .py
+explain_code_path = "/mnt/data/digital_liver_v2_with_explanations.py"
+with open(explain_code_path, "w") as f:
+    f.write(explanation_code)
+
+explain_code_path
