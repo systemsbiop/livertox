@@ -131,8 +131,3 @@ if st.sidebar.button("Run Simulation"):
             with open(tmp.name, "rb") as file:
                 st.download_button("📄 Download PDF Report", data=file, file_name=f"dili_report_{idx+1}.pdf", mime="application/pdf")
             os.unlink(tmp.name)
-'''
-
-# Save file
-with open(enhanced_path, "w") as f:
-    f.write(code_text)
